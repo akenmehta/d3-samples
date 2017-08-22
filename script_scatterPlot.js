@@ -4,11 +4,29 @@ const api_key_attr = 'http://atlas.media.mit.edu/attr/country/';
 
 var data = {};
 var country_attrs ={};
+
 var width = window.innerWidth;
 var height = window.innerHeight;
 
-var x_scale = d3.scale.linear().range([0, width]);
-var y_scale = d3.scale.linear().range([height, 0]);
+// https://bl.ocks.org/mbostock/6738109
+var superscript = "⁰¹²³⁴⁵⁶⁷⁸⁹",
+    formatPower = function(d) { 
+    			return (d + "").split("").map(function(c) { 
+    				return superscript[c]; 
+    					}).join(""); };
+
+var x_scale = d3.scale.log().range([0, width]);
+var y_scale = d3.scale.log().range([height, 0]);
+
+var x_axis = d3.svg.axis()
+				.scale(x_scale)
+				.ticks( 10, (d) => 10 + formatPower(Math.round( Math.log(d) / Math.LN10)) )
+				.orient('top');
+
+var y_axis = d3.svg.axis()
+				.scale(y_scale)
+				.ticks( 10, (d) => 10 + formatPower(Math.round( Math.log(d) / Math.LN10)) )
+				.orient('right');
 
 var svg = d3.select('#content').append('svg')
 			.attr('viewbox', `0 0 ${width} ${height}`)
@@ -52,6 +70,37 @@ function visualizeit() {
 	x_scale.domain(d3.extent(d3.values(data), (d) => d.export_val_2010));
 	y_scale.domain(d3.extent(d3.values(data), (d) => d.export_val_2011));
 
+	svg.append('g')
+		.attr('transform', 'translate(0,' + (height - 1) + ')')
+		.attr('class', 'axis')
+		.call(x_axis);
+
+	svg.append('g')
+		.attr('class', 'axis')
+		.call(y_axis);
+
+	var country_g = svg.selectAll('g.country')
+						.data(d3.values(data))
+						.enter()
+						.append('g')
+						.attr('class', 'country');
+
+	country_g.append('text')
+		.attr('x', (d) => x_scale(d.export_val_2010))
+		.attr('y', (d) => {	 
+			if(d.export_val_2011) {
+				return y_scale(d.export_val_2011);
+			}
+			return y_scale.range()[0]; 		
+		})
+		.attr('r', 5)
+		.attr('fill', (d) => country_attrs[d.id].color )
+		.text( (d) => {
+			if (country_attrs[d.id]['display_id']) {
+				return country_attrs[d.id]['display_id'].toUpperCase();
+			}
+		});
+
 	svg.selectAll('circle')
 		.data(d3.values(data))
 		.enter()
@@ -64,7 +113,7 @@ function visualizeit() {
 			return y_scale.range()[0]; 		
 		})
 		.attr('r', 5)
-		.attr('fill', (d) => country_attrs[d.id].color )
+		.attr('fill', (d) => country_attrs[d.id].color );
 }
 
 
