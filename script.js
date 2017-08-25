@@ -1,77 +1,112 @@
-var flowers = [
-  {
-    "name": "Hydrangia",
-    "latin": "Hydrangea",
-    "light": "Sun",
-    "ease": 3
-  },
-  {
-    "name": "Chrysanthemum",
-    "latin": "Chrysanthemum",
-    "light": "Part Sun",
-    "ease": 1
-  },
-  {
-    "name": "Peony",
-    "latin": "Paeonia",
-    "light": "Part Sun",
-    "ease": -1
-  },
-  {
-    "name": "Orchid",
-    "latin": "Paeonia",
-    "light": "Shade",
-    "ease": -5
-  },
-  {
-    "name": "Fern",
-    "latin": "Dryopteris",
-    "light": "Shade",
-    "ease": 5
-  }
-];
+const apiUrl = 'https://raw.githubusercontent.com/FreeCodeCamp/ProjectReferenceData/master/GDP-data.json';
+var app = {};
 
+app.data = [];
+app.tempColor;
 
-var width = window.innerWidth, 
-    height = window.innerHeight,
-    padding = Math.floor(width * 0.01);
-    
+// app.width = 700;
+// app.height = 400;
 
-var svg = d3.select('#content').append('svg')
-          .attr('viewbox', '0 0 ' + width + ' ' + height)
-          .attr('width', width)
-          .attr('height', height);
+app.barChart = d3.json(apiUrl, function(e,d){
+  var years = [], values = [];
+  var margin = { top: 0, right: 0, bottom: 30, left: 40};
+  app.width = 700 - margin.left - margin.right;
+  app.height = 400 - margin.top - margin.bottom;
 
-function update(new_data) {
-
-  flowers.map((flower) => {
-    flower['value'] = Math.floor(Math.random() * 100) + 1 ;
-    return flower;
+  if(e) { console.warn(e);}
+  d.data.forEach((data) => {
+    app.data.push(data[1]);
   });
 
-  var flower_domain = d3.extent(new_data, (d) => d.value);
 
-  var bar_height = d3.scale.linear()
-                      .domain(flower_domain)
-                      .range([0, height]);
+  app.yScale = d3.scaleLinear()
+                 .domain([0, d3.max(app.data)])
+                 .range([0, app.height]);
 
-  var bar_width = width/new_data.length;
+  app.yAxisValues = d3.scaleLinear()
+                      .domain([0, d3.max(app.data)])
+                      .range([app.height, 0]);
 
-  var rects = svg.selectAll('rect').data(new_data)
+  app.yAxisTicks = d3.axisRight(app.yAxisValues)
+                     .ticks(10);
 
-  rects.enter().append('rect')
+  app.XAxisValues = d3.scaleLinear()
+                    .domain([0, d3.max(app.data)])
+                    .range([app.width, 0]);
+
+  app.XAxisTicks = d3.axisBottom(app.XAxisValues)
+                     .ticks(10);
+
+  app.xScale = d3.scaleBand()
+                 .domain(app.data)
+                 .padding(0.1)
+                 .range([0, app.width]);
+
+  app.color = d3.scaleLinear()
+                .domain([0, d3.max(app.data)])
+                .range(['#ffb832', '#c61c6f']);
+
+  app.tooltip = d3.select('body')
+                  .append('div')
+                  .style('position', 'absolute')
+                  .style('padding', '0 10px')
+                  .style('background', 'white')
+                  .style('opacity', 0);
 
 
-  rects.attr({
-    'x': (d, i) => i * bar_width,
-    'y': (d, i) =>  height - bar_height(d.value),
-    'width': bar_width - padding,
-    'height': (d) => bar_height(d.value),
-    'fill': 'darkcyan'
-  })
+  app.canvas = d3.select('#content').append('svg')
+                 .attr('width', app.width + margin.left + margin.right)
+                 .attr('height', app.height + margin.top + margin.bottom)
+                 .append('g')
+                 .attr('tranform', `translate( ${margin.left}, ${margin.right})`)
+                 .selectAll('rect')
+                 .data(app.data)
+                 .enter();
 
-}
+  app.rect = app.canvas.append('rect')
+               .attr('height', 0)
+               .attr('width', (d) => app.xScale.bandwidth())
+               .attr('x', (d) => app.xScale(d))
+               .attr('y', app.height)
+               .attr('fill', (d) => app.color(d))
 
-update(flowers);
+               .on('mouseover', function(d){
+                  app.tempColor = this.style.fill;
 
+                  app.tooltip.transition().duration(200)
+                             .style('opacity', 0.9);
+                  app.tooltip.html( 
+                                  `<div>$ ${d} Billion</div>`
+                              )
+                             .style('left', (d3.event.pageX - 35) + 'px')
+                             .style('top', (d3.event.pageY - 30) + 'px');
+
+                  d3.select(this)
+                      .transition()
+                      .style('fill', 'green')
+               })
+
+                .on('mouseout', function(d) {
+                  app.tooltip.html('');
+                  d3.select(this)
+                      .transition()
+                      .style('fill', app.tempColor)
+               });
+
+  app.rect.transition()
+    .attr('height', (d) => app.yScale(d))
+    .attr('y', (d) => app.height - app.yScale(d))
+    .delay((d, i) => i*5)
+    .duration(200)
+    .ease(d3.easeBounceOut);
+
+  app.yGuide = d3.select('#content svg').append('g')
+                  .attr('transform', 'translate(660, 0)')
+                  .call(app.yAxisTicks);
+
+    app.XGuide = d3.select('#content svg').append('g')
+                  .attr('transform', 'translate(0, 0)')
+                  .call(app.XAxisTicks);               
+
+});
 
