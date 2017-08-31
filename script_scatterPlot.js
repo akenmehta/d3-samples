@@ -15,15 +15,15 @@ var superscript = "⁰¹²³⁴⁵⁶⁷⁸⁹",
     				return superscript[c]; 
     					}).join(""); };
 
-var x_scale = d3.scale.log().range([0, width]);
-var y_scale = d3.scale.log().range([height, 0]);
+var x_scale = d3.scaleLog().range([0, width]);
+var y_scale = d3.scaleLog().range([height, 0]);
 
-var x_axis = d3.svg.axis()
+var x_axis = d3.axisBottom()
 				.scale(x_scale)
 				.ticks( 10, (d) => 10 + formatPower(Math.round( Math.log(d) / Math.LN10)) )
 				.orient('top');
 
-var y_axis = d3.svg.axis()
+var y_axis = d3.axisLeft()
 				.scale(y_scale)
 				.ticks( 10, (d) => 10 + formatPower(Math.round( Math.log(d) / Math.LN10)) )
 				.orient('right');
